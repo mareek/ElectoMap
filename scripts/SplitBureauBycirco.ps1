@@ -3,10 +3,10 @@ param([string] $destDir, [string] $sourceFile, [string] $bureauFile)
 . "$PSScriptRoot\gzip.ps1"
 
 <#
-#>
 $destDir = "C:\temp\circos"
 $sourceFile = "C:\Users\maree\Downloads\resultats-definitifs-par-bureau-de-vote.csv"
 $bureauFile = "C:\Users\maree\Downloads\bureaux-de-vote-circonscriptions.csv"
+#>
 
 $circoByBureau = @{}
 $circoByCommune = @{}
@@ -23,17 +23,6 @@ for ($i = 1; $i -lt $bureauContent.Count; $i++) {
     $circoByBureau[$code_bv] = $circo
     $circoByCommune[$commune] = $circo
 }
-
-# Ouvrir le fichier csv
-# Pour chaque ligne
-#     récupérer le département
-#     Créer le dossier du département s'il n'exite pas
-#     récupérer la circonscription
-#     Créer le fichier de la criconscription s'il nexiste pas
-#     Ajouter la ligne au fichier de la circonscription
-# 
-# Une fois tout le fichier source parcouru, parourir tous les fichiers des circos et les gziper
-# supprimer les fichiers non gzipés
 
 $sourceContent = Get-Content -Path $sourceFile
 $csvHeader = $sourceContent[0]
@@ -61,5 +50,21 @@ for ($i = 1; $i -lt $sourceContent.Count; $i++) {
         }
         
         Add-Content -Path $circoFile -Value $csvLine
+    }
+}
+
+$zipDir = Join-Path $destDir "zip"
+if (-not (Test-Path $zipDir)) {
+    New-Item -Path $destDir -Name "zip" -ItemType Directory
+}
+
+foreach ($departementDir in (Get-ChildItem -Path $destDir -Directory)) {
+    if ($departementDir.Name -ne "zip") {
+        $searchPatern = Join-Path $departementDir "*.csv"
+        foreach ($departementFile in (Get-ChildItem -Path $searchPatern)) {
+            $zipFile = Join-Path $zipDir ($departementFile.Name + ".gz")
+            Compress-GZip-File $departementFile $zipFile
+        }
+        Remove-Item $departementDir -Force -Recurse
     }
 }
